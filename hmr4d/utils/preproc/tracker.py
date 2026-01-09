@@ -19,6 +19,24 @@ from hmr4d.utils.net_utils import moving_average_smooth
 class Tracker:
     def __init__(self) -> None:
         # https://docs.ultralytics.com/modes/predict/
+        # PyTorch >= 2.6 defaults `torch.load(weights_only=True)`, which can break
+        # Ultralytics `.pt` checkpoints (they often contain pickled model classes).
+        # Patch Ultralytics' internal `torch.load` call-site to use `weights_only=False`.
+        try:
+            import ultralytics.nn.tasks as ul_tasks
+
+            if not getattr(ul_tasks, "_gvhmr_torch_load_weights_only_patch", False):
+                _orig_torch_load = ul_tasks.torch.load
+
+                def _torch_load_compat(*args, **kwargs):
+                    kwargs.setdefault("weights_only", False)
+                    return _orig_torch_load(*args, **kwargs)
+
+                ul_tasks.torch.load = _torch_load_compat
+                ul_tasks._gvhmr_torch_load_weights_only_patch = True
+        except Exception:
+            pass
+
         self.yolo = YOLO(PROJ_ROOT / "inputs/checkpoints/yolo/yolov8x.pt")
 
     def track(self, video_path):

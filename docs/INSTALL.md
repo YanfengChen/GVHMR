@@ -13,16 +13,57 @@ pip install -e .
 # to install gvhmr in other repo as editable, try adding "python.analysis.extraPaths": ["path/to/your/package"] to settings.json
 ```
 
+### Note: RTX 50xx / Blackwell (sm_120)
+
+The pinned `torch==2.3.0+cu121` wheels in `requirements.txt` do **not** include `sm_120` kernels, so on RTX 50xx GPUs you will see errors like `no kernel image is available for execution on the device`.
+
+To keep everything else close to the repo pins, you can:
+
+Option A (recommended): use the provided Blackwell requirements file:
+
+```bash
+pip install --no-build-isolation -r requirements_blackwell.txt
+```
+
+Option B: upgrade in-place after installing `requirements.txt`:
+
+```bash
+# 1) Install the repo requirements first
+pip install -r requirements.txt
+
+# 2) Upgrade torch/torchvision to CUDA 12.8 wheels (includes sm_120)
+pip install -U --extra-index-url https://download.pytorch.org/whl/cu128 \
+    torch==2.9.1+cu128 torchvision==0.24.1+cu128
+
+# 3) Rebuild pytorch3d for your torch/CUDA stack
+pip uninstall -y pytorch3d || true
+conda install -y -c nvidia cuda-nvcc=12.8 cuda-cudart-dev=12.8
+TORCH_CUDA_ARCH_LIST="12.0" CUDA_HOME="$CONDA_PREFIX" \
+    pip install --no-build-isolation "git+https://github.com/facebookresearch/pytorch3d.git"
+```
+
 ### Optional: DPVO (not recommended if you want fast inference speed)
 ```bash
 cd third-party/DPVO
 wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.zip
 unzip eigen-3.4.0.zip -d thirdparty && rm -rf eigen-3.4.0.zip
-pip install torch-scatter -f "https://data.pyg.org/whl/torch-2.3.0+cu121.html"
+
+# NOTE (torch>=2.9): DPVO upstream uses some deprecated PyTorch C++ APIs.
+# This repo includes small compatibility patches:
+# - dpvo/altcorr/correlation_kernel.cu: use tensor.scalar_type() in AT_DISPATCH
+# - dpvo/lietorch/include/dispatch.h: update dtype dispatch for torch 2.9+
+# If you update/replace the DPVO sources, you may need to re-apply these.
+
+# torch-scatter must match your torch/CUDA build.
+# For RTX 50xx / Blackwell (sm_120) + torch 2.9.1+cu128, build from source:
+CUDA_HOME="$CONDA_PREFIX" TORCH_CUDA_ARCH_LIST="12.0" FORCE_CUDA=1 \
+    pip install --no-build-isolation --no-binary torch-scatter torch-scatter
+
 pip install numba pypose
-export CUDA_HOME=/usr/local/cuda-12.1/
-export PATH=$PATH:/usr/local/cuda-12.1/bin/
-pip install -e .
+
+# Build DPVO CUDA extensions (uses nvcc from your current toolchain).
+CUDA_HOME="$CONDA_PREFIX" TORCH_CUDA_ARCH_LIST="12.0" FORCE_CUDA=1 \
+    pip install -e .
 ```
 
 ## Inputs & Outputs

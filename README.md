@@ -26,6 +26,8 @@
 
 Please see [installation](docs/INSTALL.md) for details.
 
+RTX 50xx / Blackwell (sm_120): use `requirements_blackwell.txt` (see `docs/INSTALL.md`) to avoid the `no kernel image is available` PyTorch CUDA error.
+
 ## Quick Start
 
 ### [<img src="https://i.imgur.com/QCojoJk.png" width="30"> Google Colab demo for GVHMR](https://colab.research.google.com/drive/1N9WSchizHv2bfQqkE9Wuiegw_OT7mtGj?usp=sharing)
@@ -34,6 +36,7 @@ Please see [installation](docs/INSTALL.md) for details.
 
 ### Demo
 Demo entries are provided in `tools/demo`. Use `-s` to skip visual odometry if you know the camera is static, otherwise the camera will be estimated by DPVO.
+If you want to use DPVO, follow the DPVO section in `docs/INSTALL.md` (includes torch>=2.9 / RTX 50xx notes).
 We also provide a script `demo_folder.py` to inference a entire folder.
 ```shell
 python tools/demo/demo.py --video=docs/example_video/tennis.mp4 -s
